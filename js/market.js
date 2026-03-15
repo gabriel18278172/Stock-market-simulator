@@ -40,15 +40,16 @@ const Market = (() => {
     return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
   }
 
-  // dt = one intraday step (1/252 trading days / 78 five-minute bars per day)
-  const DT = 1 / (252 * 78);
+  // Price simulation constants
+  const DT = 1 / (252 * 78); // one intraday step (1/252 trading days / 78 five-minute bars)
+  const MIN_STOCK_PRICE = 0.50;
 
   function simulatePriceUpdate(stock) {
     const { drift, volatility, price } = stock;
     const z = randomNormal();
     const exponent = (drift - 0.5 * volatility * volatility) * DT + volatility * Math.sqrt(DT) * z;
     let newPrice = price * Math.exp(exponent);
-    if (newPrice < 0.50) newPrice = 0.50;
+    if (newPrice < MIN_STOCK_PRICE) newPrice = MIN_STOCK_PRICE;
     stock.price = parseFloat(newPrice.toFixed(2));
     return stock.price;
   }
@@ -63,7 +64,7 @@ const Market = (() => {
       const exp = (stock.drift - 0.5 * stock.volatility * stock.volatility) * DT_DAILY
         + stock.volatility * Math.sqrt(DT_DAILY) * z;
       p = p * Math.exp(exp);
-      if (p < 0.50) p = 0.50;
+      if (p < MIN_STOCK_PRICE) p = MIN_STOCK_PRICE;
       prices.push(parseFloat(p.toFixed(2)));
     }
     // Adjust last price so history ends near the stock's current price

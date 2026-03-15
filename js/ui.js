@@ -5,7 +5,6 @@
 const UI = (() => {
   let currentPage = 'dashboard';
   let currentStockModal = null;
-  let _toastQueue = [];
   let _historyFilter = 'ALL';
   let _historySortField = 'date';
   let _historySortDir = -1;

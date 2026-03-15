@@ -4,6 +4,9 @@
 
 const Portfolio = (() => {
   const INITIAL_CASH = 10000;
+  const FLOAT_TOLERANCE = 0.01;
+  const MIN_SHARES_THRESHOLD = 0.0001;
+  const MIN_VALUE_THRESHOLD = 0.01;
 
   const state = {
     cash: INITIAL_CASH,
@@ -153,7 +156,7 @@ const Portfolio = (() => {
     if (dollarAmount < 1) {
       return { success: false, message: 'Minimum trade amount is $1.00.' };
     }
-    if (dollarAmount > pos.currentValue + 0.01) {
+    if (dollarAmount > pos.currentValue + FLOAT_TOLERANCE) {
       return { success: false, message: `Cannot sell more than your position value ($${pos.currentValue.toFixed(2)}).` };
     }
 
@@ -167,7 +170,7 @@ const Portfolio = (() => {
     pos.currentValue = parseFloat((pos.shares * currentPrice).toFixed(2));
 
     // Remove position if essentially empty
-    if (pos.shares < 0.0001 || pos.currentValue < 0.01) {
+    if (pos.shares < MIN_SHARES_THRESHOLD || pos.currentValue < MIN_VALUE_THRESHOLD) {
       delete state.positions[ticker];
     }
 
