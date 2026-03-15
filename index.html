@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Dollar-based stock market simulator — invest, track, and analyze a virtual portfolio in real time." />
+  <title>StockSim — Dollar-Based Market Simulator</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1>📈 Stock<span>Sim</span></h1>
+      <p>Dollar-Based Simulator</p>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">🏠</span>
+        <span>Dashboard</span>
+      </div>
+      <div class="nav-item" data-page="market">
+        <span class="nav-icon">📊</span>
+        <span>Market</span>
+      </div>
+      <div class="nav-item" data-page="portfolio">
+        <span class="nav-icon">💼</span>
+        <span>Portfolio</span>
+      </div>
+      <div class="nav-item" data-page="history">
+        <span class="nav-icon">🕐</span>
+        <span>History</span>
+      </div>
+      <div class="nav-item" data-page="stats">
+        <span class="nav-icon">🏆</span>
+        <span>Stats</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="reset-btn" id="reset-btn">🔄 Reset Portfolio</button>
+    </div>
+  </aside>
+
+  <!-- ── Main Content ──────────────────────────────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- ── Dashboard ──────────────────────────────────────────────────────── -->
+    <section id="page-dashboard" class="page-section active">
+      <div class="page-header">
+        <h2>Dashboard</h2>
+        <p>Live portfolio overview — prices update every 2 seconds</p>
+      </div>
+
+      <!-- Stats row -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Total Portfolio Value</div>
+          <div class="stat-value" id="stat-total-value">$10,000.00</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Cash Balance</div>
+          <div class="stat-value" id="stat-cash">$10,000.00</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Invested</div>
+          <div class="stat-value" id="stat-invested">$0.00</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Unrealised Gain / Loss</div>
+          <div class="stat-value" id="stat-gainloss">$0.00</div>
+          <div class="stat-pct" id="stat-gainloss-pct">+0.00%</div>
+        </div>
+      </div>
+
+      <!-- Dashboard grid -->
+      <div class="dashboard-grid">
+        <!-- Main column -->
+        <div class="dashboard-main">
+          <div class="card mb-20">
+            <div class="card-title">Portfolio Performance</div>
+            <div class="chart-wrap portfolio-chart-wrap">
+              <canvas id="portfolio-chart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side column -->
+        <div class="dashboard-side">
+          <!-- Allocation -->
+          <div class="card">
+            <div class="card-title">Allocation</div>
+            <div class="chart-wrap allocation-chart-wrap">
+              <canvas id="allocation-chart"></canvas>
+            </div>
+          </div>
+
+          <!-- Watchlist -->
+          <div class="card">
+            <div class="card-title">⭐ Watchlist</div>
+            <div id="watchlist-container">
+              <p class="empty-state">Add stocks from the Market page.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- News Feed -->
+      <div class="card mt-20">
+        <div class="card-title">📰 Market News</div>
+        <div class="news-feed" id="news-feed">
+          <p class="empty-state">Market events will appear here shortly…</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Market ──────────────────────────────────────────────────────────── -->
+    <section id="page-market" class="page-section">
+      <div class="page-header">
+        <h2>Market</h2>
+        <p>20 stocks across 6 sectors — click any card to trade</p>
+      </div>
+
+      <div class="market-controls">
+        <input
+          type="text"
+          id="market-search"
+          class="market-search"
+          placeholder="🔍  Search by name or ticker…"
+          autocomplete="off"
+        />
+        <div class="sector-filters">
+          <button class="sector-filter-btn active" data-sector="All">All</button>
+          <button class="sector-filter-btn" data-sector="Technology">Tech</button>
+          <button class="sector-filter-btn" data-sector="Healthcare">Health</button>
+          <button class="sector-filter-btn" data-sector="Energy">Energy</button>
+          <button class="sector-filter-btn" data-sector="Finance">Finance</button>
+          <button class="sector-filter-btn" data-sector="Consumer">Consumer</button>
+          <button class="sector-filter-btn" data-sector="Industrial">Industrial</button>
+        </div>
+      </div>
+
+      <div class="market-grid" id="market-grid">
+        <!-- Stock cards rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ── Portfolio ───────────────────────────────────────────────────────── -->
+    <section id="page-portfolio" class="page-section">
+      <div class="page-header">
+        <h2>Portfolio</h2>
+        <p>Your current positions and performance</p>
+      </div>
+
+      <div class="portfolio-header-stats">
+        <div class="port-stat">
+          <div class="port-stat-label">Total Value</div>
+          <div class="port-stat-val" id="port-total-value">$10,000.00</div>
+        </div>
+        <div class="port-stat">
+          <div class="port-stat-label">Cash</div>
+          <div class="port-stat-val" id="port-cash">$10,000.00</div>
+        </div>
+        <div class="port-stat">
+          <div class="port-stat-label">Invested</div>
+          <div class="port-stat-val" id="port-invested">$0.00</div>
+        </div>
+        <div class="port-stat">
+          <div class="port-stat-label">Gain / Loss</div>
+          <div class="port-stat-val" id="port-gainloss">$0.00 (0.00%)</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Stock</th>
+              <th>Shares</th>
+              <th>Avg Cost</th>
+              <th>Market Value</th>
+              <th>Cost Basis</th>
+              <th>Gain / Loss</th>
+              <th>Allocation</th>
+            </tr>
+          </thead>
+          <tbody id="positions-table">
+            <tr><td colspan="7" class="empty-state">No positions yet. Buy some stocks!</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── History ─────────────────────────────────────────────────────────── -->
+    <section id="page-history" class="page-section">
+      <div class="page-header">
+        <h2>Transaction History</h2>
+        <p>Complete record of all your trades</p>
+      </div>
+
+      <div class="history-controls">
+        <button class="history-filter-btn active" data-filter="ALL">All Trades</button>
+        <button class="history-filter-btn" data-filter="BUY">Buys</button>
+        <button class="history-filter-btn" data-filter="SELL">Sells</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="sort-header" data-sort="date">Date ↕</th>
+              <th>Type</th>
+              <th class="sort-header" data-sort="ticker">Ticker ↕</th>
+              <th class="sort-header" data-sort="amount">Amount ↕</th>
+              <th>Price</th>
+              <th>Shares</th>
+              <th>Realised G/L</th>
+            </tr>
+          </thead>
+          <tbody id="transactions-table">
+            <tr><td colspan="7" class="empty-state">No transactions yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Stats ───────────────────────────────────────────────────────────── -->
+    <section id="page-stats" class="page-section">
+      <div class="page-header">
+        <h2>Performance Stats</h2>
+        <p>Your trading metrics and achievements</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stats-card">
+          <div class="stats-card-label">Total Portfolio Value</div>
+          <div class="stats-card-value" id="stats-total-value">$10,000.00</div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-label">Total Gain / Loss</div>
+          <div class="stats-card-value" id="stats-total-gl">$0.00</div>
+          <div class="stats-card-sub" id="stats-total-gl-pct">+0.00%</div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-label">Win Rate</div>
+          <div class="stats-card-value" id="stats-win-rate">0%</div>
+          <div class="stats-card-sub">of closed trades</div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-label">Total Trades</div>
+          <div class="stats-card-value" id="stats-total-trades">0</div>
+          <div class="stats-card-sub">
+            <span id="stats-buy-count">0</span> buys &nbsp;·&nbsp;
+            <span id="stats-sell-count">0</span> sells
+          </div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-label">Portfolio Peak</div>
+          <div class="stats-card-value" id="stats-peak">$10,000.00</div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-label">Portfolio Low</div>
+          <div class="stats-card-value" id="stats-low">$10,000.00</div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-label">Total Realised P&L</div>
+          <div class="stats-card-value" id="stats-realised">$0.00</div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-label">Avg Realised per Trade</div>
+          <div class="stats-card-value" id="stats-avg-trade">$0.00</div>
+        </div>
+      </div>
+
+      <div class="stats-pair-grid mt-20">
+        <div class="trade-highlight">
+          <div class="trade-highlight-label">🏆 Best Trade</div>
+          <div class="trade-highlight-ticker" id="stats-best-ticker">—</div>
+          <div class="trade-highlight-val positive" id="stats-best-gain">$0.00</div>
+        </div>
+        <div class="trade-highlight">
+          <div class="trade-highlight-label">📉 Worst Trade</div>
+          <div class="trade-highlight-ticker" id="stats-worst-ticker">—</div>
+          <div class="trade-highlight-val negative" id="stats-worst-loss">$0.00</div>
+        </div>
+      </div>
+    </section>
+
+  </main><!-- /main-content -->
+</div><!-- /app-layout -->
+
+<!-- ── Stock Detail Modal ──────────────────────────────────────────────────── -->
+<div id="stock-modal" class="modal-overlay">
+  <div class="modal-box">
+    <button class="modal-close" id="modal-close-btn" title="Close">✕</button>
+
+    <!-- Header -->
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+          <span class="modal-ticker-large" id="modal-ticker">AAPL</span>
+          <span class="sector-badge" id="modal-sector-badge">Technology</span>
+        </div>
+        <div class="modal-company-name" id="modal-company">Apple Inc.</div>
+      </div>
+      <div class="modal-price-group">
+        <div class="modal-price-display" id="modal-price">$0.00</div>
+        <div class="modal-price-change positive" id="modal-change">+$0.00 (+0.00%)</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="modal-tabs">
+      <button class="modal-tab-btn active" data-tab="chart">📈 Chart</button>
+      <button class="modal-tab-btn" data-tab="stats">📋 Details</button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+
+      <!-- Chart section -->
+      <div id="modal-chart-section">
+        <div class="range-btns">
+          <button class="range-btn" data-range="1D">1D</button>
+          <button class="range-btn" data-range="1W">1W</button>
+          <button class="range-btn" data-range="1M">1M</button>
+          <button class="range-btn active" data-range="3M">3M</button>
+          <button class="range-btn" data-range="ALL">All</button>
+        </div>
+        <div class="chart-wrap stock-price-chart-wrap">
+          <canvas id="stock-price-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Stats/Details section -->
+      <div id="modal-stats-section" style="display:none;">
+        <div class="modal-key-stats">
+          <div class="key-stat">
+            <div class="key-stat-label">Open (90d)</div>
+            <div class="key-stat-val" id="modal-stat-open">—</div>
+          </div>
+          <div class="key-stat">
+            <div class="key-stat-label">90d High</div>
+            <div class="key-stat-val" id="modal-stat-high">—</div>
+          </div>
+          <div class="key-stat">
+            <div class="key-stat-label">90d Low</div>
+            <div class="key-stat-val" id="modal-stat-low">—</div>
+          </div>
+          <div class="key-stat">
+            <div class="key-stat-label">Volume (est.)</div>
+            <div class="key-stat-val" id="modal-stat-volume">—</div>
+          </div>
+          <div class="key-stat">
+            <div class="key-stat-label">Mkt Cap (est.)</div>
+            <div class="key-stat-val" id="modal-stat-mktcap">—</div>
+          </div>
+        </div>
+        <p class="modal-description" id="modal-stat-description"></p>
+      </div>
+
+      <!-- Trade Panel -->
+      <div class="trade-panel">
+        <div class="trade-panel-title">Trade</div>
+
+        <!-- Current position info -->
+        <div id="modal-position-info">
+          <p class="no-position">No position held</p>
+        </div>
+
+        <!-- Input row -->
+        <div class="trade-input-row">
+          <input
+            type="number"
+            id="trade-amount"
+            class="trade-input"
+            placeholder="Enter dollar amount…"
+            min="1"
+            step="1"
+          />
+        </div>
+
+        <!-- Quick max buttons -->
+        <div class="trade-info">
+          <span id="modal-available-cash">Available: $0.00</span>
+          <div class="trade-max-btns">
+            <button class="max-btn" id="max-buy-btn">Max Buy</button>
+            <button class="max-btn" id="max-sell-btn">Max Sell</button>
+          </div>
+          <span id="modal-sell-max">No position</span>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="trade-btns mt-16">
+          <button class="btn-buy" id="modal-buy-btn">✅ Buy</button>
+          <button class="btn-sell" id="modal-sell-btn">❌ Sell</button>
+        </div>
+      </div>
+
+    </div><!-- /modal-body -->
+  </div><!-- /modal-box -->
+</div><!-- /stock-modal -->
+
+<!-- ── Confirm Modal ───────────────────────────────────────────────────────── -->
+<div id="confirm-modal" class="modal-overlay">
+  <div class="modal-box confirm-box">
+    <h3 id="confirm-title">Confirm Action</h3>
+    <p id="confirm-message">Are you sure?</p>
+    <div class="confirm-btns">
+      <button class="btn-secondary" id="confirm-cancel">Cancel</button>
+      <button class="btn-primary" id="confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast Container ─────────────────────────────────────────────────────── -->
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- ── Scripts ────────────────────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/market.js"></script>
+<script src="js/portfolio.js"></script>
+<script src="js/news.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
