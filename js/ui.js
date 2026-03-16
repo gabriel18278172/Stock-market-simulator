@@ -12,6 +12,7 @@ const UI = (() => {
   let _marketSector = 'All';
   let _stockModalRange = '3M';
   let _stockModalTab = 'chart';
+  let _lastMarketFilterKey = '';
 
   /* ── Formatters ─────────────────────────────────────────────────────────── */
 
@@ -52,7 +53,6 @@ const UI = (() => {
     const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
     toast.innerHTML = `<span class="toast-icon">${icons[type] || 'ℹ️'}</span><span class="toast-msg">${message}</span><button class="toast-close" onclick="this.parentElement.remove()">×</button>`;
     container.appendChild(toast);
-    // Animate in
     requestAnimationFrame(() => toast.classList.add('toast-visible'));
     setTimeout(() => {
       toast.classList.remove('toast-visible');
@@ -99,7 +99,6 @@ const UI = (() => {
     const modal = document.getElementById('stock-modal');
     if (!modal) return;
 
-    // Header
     document.getElementById('modal-ticker').textContent = stock.ticker;
     document.getElementById('modal-company').textContent = stock.name;
     document.getElementById('modal-sector-badge').textContent = stock.sector;
@@ -110,11 +109,9 @@ const UI = (() => {
     _updateModalStats(stock);
     _updateModalTradePanel(stock);
 
-    // Range buttons active state
     modal.querySelectorAll('.range-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.range === _stockModalRange);
     });
-    // Tab state
     _switchModalTab(_stockModalTab);
 
     modal.classList.add('modal-open');
@@ -122,13 +119,11 @@ const UI = (() => {
   }
 
   function _updateModalPriceHeader(stock) {
-    const app = window.App;
     const priceEl = document.getElementById('modal-price');
     const changeEl = document.getElementById('modal-change');
     if (!priceEl || !changeEl) return;
 
     priceEl.textContent = formatCurrency(stock.price);
-    // Compute change vs initial
     const chg = stock.price - stock.initialPrice;
     const chgPct = (chg / stock.initialPrice) * 100;
     changeEl.textContent = `${chg >= 0 ? '+' : ''}${formatCurrency(Math.abs(chg))} (${formatPercent(chgPct)})`;
@@ -221,9 +216,7 @@ const UI = (() => {
     const glPctEl = document.getElementById('stat-gainloss-pct');
     if (glPctEl) { glPctEl.textContent = formatPercent(gainPct); glPctEl.className = 'stat-pct ' + _gainClass(gainPct); }
 
-    // Portfolio chart
     Charts.renderPortfolioChart('portfolio-chart', portfolio.portfolioHistory);
-    // Allocation chart
     Charts.renderAllocationChart('allocation-chart', portfolio.positions);
 
     _updateNewsFeed();
@@ -278,60 +271,99 @@ const UI = (() => {
 
   /* ── Market ─────────────────────────────────────────────────────────────── */
 
-  function updateMarketList(stocks, watchlist) {
-    const grid = document.getElementById('market-grid');
-    if (!grid) return;
-
+  function _getFilteredStocks(stocks) {
     let filtered = stocks;
     if (_marketSector !== 'All') filtered = filtered.filter(s => s.sector === _marketSector);
     if (_marketSearch.trim()) {
       const q = _marketSearch.trim().toLowerCase();
       filtered = filtered.filter(s => s.ticker.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
     }
+    return filtered;
+  }
+
+  function _buildMarketFilterKey(filtered, watchlist) {
+    return filtered.map(s => s.ticker).join(',') + '|' + (watchlist || []).join(',');
+  }
+
+  function updateMarketList(stocks, watchlist) {
+    const grid = document.getElementById('market-grid');
+    if (!grid) return;
+
+    const filtered = _getFilteredStocks(stocks);
 
     if (filtered.length === 0) {
       grid.innerHTML = '<p class="empty-state">No stocks match your search.</p>';
+      _lastMarketFilterKey = '';
       return;
     }
 
-    grid.innerHTML = filtered.map(stock => {
-      const chg = stock.price - stock.initialPrice;
-      const chgPct = (chg / stock.initialPrice) * 100;
-      const isWatched = watchlist && watchlist.includes(stock.ticker);
-      const sparkId = 'spark-' + stock.ticker;
-      return `
-        <div class="stock-card" onclick="UI.showStockModal('${stock.ticker}')">
-          <div class="stock-card-header">
-            <div>
-              <div class="stock-ticker">${stock.ticker}</div>
-              <div class="stock-name-small">${stock.name}</div>
-            </div>
-            <button class="watchlist-btn ${isWatched ? 'watched' : ''}"
-              onclick="event.stopPropagation(); window.App && window.App.toggleWatchlist('${stock.ticker}')"
-              title="${isWatched ? 'Remove from watchlist' : 'Add to watchlist'}">
-              ${isWatched ? '★' : '☆'}
-            </button>
-          </div>
-          <div class="stock-card-price">
-            <span class="stock-price">${formatCurrency(stock.price)}</span>
-            <span class="price-badge ${_gainClass(chgPct)}">${formatPercent(chgPct)}</span>
-          </div>
-          <div class="stock-card-meta">
-            <span class="sector-badge ${_sectorClass(stock.sector)}">${stock.sector}</span>
-          </div>
-          <div class="sparkline-wrap">
-            <canvas id="${sparkId}" width="160" height="48"></canvas>
-          </div>
-        </div>`;
-    }).join('');
+    const filterKey = _buildMarketFilterKey(filtered, watchlist);
+    const needsFullRebuild = (filterKey !== _lastMarketFilterKey);
 
-    // Render sparklines after DOM is painted
-    requestAnimationFrame(() => {
+    if (needsFullRebuild) {
+      // Full rebuild: filters/watchlist changed, or first render
+      _lastMarketFilterKey = filterKey;
+      grid.innerHTML = filtered.map(stock => {
+        const chg = stock.price - stock.initialPrice;
+        const chgPct = (chg / stock.initialPrice) * 100;
+        const isWatched = watchlist && watchlist.includes(stock.ticker);
+        const sparkId = 'spark-' + stock.ticker;
+        return `
+          <div class="stock-card" data-ticker="${stock.ticker}" onclick="UI.showStockModal('${stock.ticker}')">
+            <div class="stock-card-header">
+              <div>
+                <div class="stock-ticker">${stock.ticker}</div>
+                <div class="stock-name-small">${stock.name}</div>
+              </div>
+              <button class="watchlist-btn ${isWatched ? 'watched' : ''}"
+                onclick="event.stopPropagation(); window.App && window.App.toggleWatchlist('${stock.ticker}')"
+                title="${isWatched ? 'Remove from watchlist' : 'Add to watchlist'}">
+                ${isWatched ? '★' : '☆'}
+              </button>
+            </div>
+            <div class="stock-card-price">
+              <span class="stock-price" data-field="price">${formatCurrency(stock.price)}</span>
+              <span class="price-badge ${_gainClass(chgPct)}" data-field="change">${formatPercent(chgPct)}</span>
+            </div>
+            <div class="stock-card-meta">
+              <span class="sector-badge ${_sectorClass(stock.sector)}">${stock.sector}</span>
+            </div>
+            <div class="sparkline-wrap">
+              <canvas id="${sparkId}" width="160" height="48"></canvas>
+            </div>
+          </div>`;
+      }).join('');
+
+      // Render sparklines after DOM is painted
+      requestAnimationFrame(() => {
+        filtered.forEach(stock => {
+          const app = window.App;
+          if (app) Charts.renderMiniSparkline('spark-' + stock.ticker, stock.ticker, app.priceHistory);
+        });
+      });
+    } else {
+      // Incremental update: only update price text and sparkline data (no innerHTML nuke)
       filtered.forEach(stock => {
+        const card = grid.querySelector(`.stock-card[data-ticker="${stock.ticker}"]`);
+        if (!card) return;
+
+        const chg = stock.price - stock.initialPrice;
+        const chgPct = (chg / stock.initialPrice) * 100;
+
+        const priceEl = card.querySelector('[data-field="price"]');
+        if (priceEl) priceEl.textContent = formatCurrency(stock.price);
+
+        const changeEl = card.querySelector('[data-field="change"]');
+        if (changeEl) {
+          changeEl.textContent = formatPercent(chgPct);
+          changeEl.className = 'price-badge ' + _gainClass(chgPct);
+        }
+
+        // Update sparkline in-place (canvas is still alive)
         const app = window.App;
         if (app) Charts.renderMiniSparkline('spark-' + stock.ticker, stock.ticker, app.priceHistory);
       });
-    });
+    }
   }
 
   /* ── Portfolio ───────────────────────────────────────────────────────────── */
@@ -342,7 +374,6 @@ const UI = (() => {
     const positions = Object.values(portfolio.positions);
     const totalValue = portfolio.getTotalValue();
 
-    // Update header stats
     _setText('port-total-value', formatCurrency(totalValue));
     _setText('port-cash', formatCurrency(portfolio.cash));
     _setText('port-invested', formatCurrency(portfolio.getTotalInvested()));
@@ -449,6 +480,8 @@ const UI = (() => {
 
   function navigateTo(page) {
     currentPage = page;
+    // When leaving market, reset the filter key so next visit does a full build
+    if (page !== 'market') _lastMarketFilterKey = '';
     document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
     const pageEl = document.getElementById('page-' + page);
     if (pageEl) pageEl.classList.add('active');
@@ -456,7 +489,6 @@ const UI = (() => {
       n.classList.toggle('active', n.dataset.page === page);
     });
 
-    // Refresh view for current page
     const app = window.App;
     if (!app) return;
     switch (page) {
@@ -490,6 +522,7 @@ const UI = (() => {
     if (inp) {
       inp.addEventListener('input', e => {
         _marketSearch = e.target.value;
+        _lastMarketFilterKey = ''; // force full rebuild on filter change
         const app = window.App;
         if (app) updateMarketList(app.stocks, app.watchlist);
       });
@@ -497,6 +530,7 @@ const UI = (() => {
     document.querySelectorAll('.sector-filter-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         _marketSector = btn.dataset.sector || 'All';
+        _lastMarketFilterKey = ''; // force full rebuild on filter change
         document.querySelectorAll('.sector-filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         const app = window.App;
@@ -554,5 +588,6 @@ const UI = (() => {
     updateHistoryView, updateStatsView, navigateTo,
     wireMarketSearch, wireHistoryFilters, wireModalRangeBtns,
     _updateModalPriceHeader, _updateModalTradePanel, _updateNewsFeed,
+    _renderModalChart,
   };
 })();
