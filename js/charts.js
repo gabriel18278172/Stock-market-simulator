@@ -1,19 +1,16 @@
 /**
  * charts.js — Chart rendering using Chart.js (loaded via CDN)
  */
-
 const Charts = (() => {
   let priceChartInstance = null;
   let portfolioChartInstance = null;
   let allocationChartInstance = null;
   const sparklineInstances = {};
-
   const PALETTE = [
     '#6c63ff', '#00d4a8', '#ff4d6d', '#f59e0b', '#38bdf8',
     '#a78bfa', '#34d399', '#fb923c', '#e879f9', '#60a5fa',
     '#facc15', '#4ade80', '#f87171', '#818cf8', '#2dd4bf',
   ];
-
   const baseConfig = {
     responsive: true,
     maintainAspectRatio: false,
@@ -31,14 +28,12 @@ const Charts = (() => {
       },
     },
   };
-
   function destroyChart(instance) {
     if (instance && typeof instance.destroy === 'function') {
       try { instance.destroy(); } catch (_) {}
     }
     return null;
   }
-
   function _filterHistory(entries, range) {
     if (!entries || entries.length === 0) return entries;
     const now = Date.now();
@@ -49,7 +44,6 @@ const Charts = (() => {
     const filtered = entries.filter(e => e.time >= cutoff);
     return filtered.length > 1 ? filtered : entries.slice(-2);
   }
-
   function _gradientFill(ctx, chartArea, colorUp, colorDown, isUp) {
     const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
     const color = isUp ? colorUp : colorDown;
@@ -57,12 +51,9 @@ const Charts = (() => {
     gradient.addColorStop(1, color + '00');
     return gradient;
   }
-
   function renderPriceChart(canvasId, stock, priceHistory, range) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
-    priceChartInstance = destroyChart(priceChartInstance);
-
     const entries = _filterHistory(priceHistory[stock.ticker] || [], range || '3M');
     const labels = entries.map(e => {
       const d = new Date(e.time);
@@ -72,7 +63,21 @@ const Charts = (() => {
     const data = entries.map(e => e.price);
     const isUp = data.length > 1 ? data[data.length - 1] >= data[0] : true;
     const lineColor = isUp ? '#00d4a8' : '#ff4d6d';
-
+    // Update existing chart in-place for smooth animation
+    if (priceChartInstance && priceChartInstance.canvas === canvas) {
+      priceChartInstance.data.labels = labels;
+      priceChartInstance.data.datasets[0].data = data;
+      priceChartInstance.data.datasets[0].borderColor = lineColor;
+      priceChartInstance.data.datasets[0].backgroundColor = function(context) {
+        const chart = context.chart;
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return 'transparent';
+        return _gradientFill(ctx, chartArea, '#00d4a8', '#ff4d6d', isUp);
+      };
+      priceChartInstance.update('none');
+      return priceChartInstance;
+    }
+    priceChartInstance = destroyChart(priceChartInstance);
     priceChartInstance = new Chart(canvas, {
       type: 'line',
       data: {
@@ -115,12 +120,10 @@ const Charts = (() => {
     });
     return priceChartInstance;
   }
-
   function renderPortfolioChart(canvasId, portfolioHistory) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
     portfolioChartInstance = destroyChart(portfolioChartInstance);
-
     const entries = (portfolioHistory || []).slice(-60);
     if (entries.length < 2) {
       portfolioChartInstance = null;
@@ -133,7 +136,6 @@ const Charts = (() => {
     const data = entries.map(e => e.value);
     const isUp = data[data.length - 1] >= data[0];
     const lineColor = isUp ? '#6c63ff' : '#ff4d6d';
-
     portfolioChartInstance = new Chart(canvas, {
       type: 'line',
       data: {
@@ -185,19 +187,15 @@ const Charts = (() => {
     });
     return portfolioChartInstance;
   }
-
   function renderAllocationChart(canvasId, positions) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
     allocationChartInstance = destroyChart(allocationChartInstance);
-
     const posArr = Object.values(positions || {}).filter(p => p.currentValue > 0);
     if (posArr.length === 0) return;
-
     const labels = posArr.map(p => p.ticker);
     const data = posArr.map(p => p.currentValue);
     const colors = posArr.map((_, i) => PALETTE[i % PALETTE.length]);
-
     allocationChartInstance = new Chart(canvas, {
       type: 'doughnut',
       data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#0a0e1a', borderWidth: 3, hoverOffset: 6 }] },
@@ -232,22 +230,28 @@ const Charts = (() => {
     });
     return allocationChartInstance;
   }
-
   function renderMiniSparkline(canvasId, ticker, priceHistory) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return null;
-
-    if (sparklineInstances[canvasId]) {
-      try { sparklineInstances[canvasId].destroy(); } catch (_) {}
-      delete sparklineInstances[canvasId];
-    }
-
     const entries = (priceHistory[ticker] || []).slice(-30);
     if (entries.length < 2) return null;
     const data = entries.map(e => e.price);
     const isUp = data[data.length - 1] >= data[0];
     const lineColor = isUp ? '#00d4a8' : '#ff4d6d';
-
+    // Update existing sparkline in-place instead of destroying/recreating
+    if (sparklineInstances[canvasId] && sparklineInstances[canvasId].canvas === canvas) {
+      const inst = sparklineInstances[canvasId];
+      inst.data.labels = data.map(() => '');
+      inst.data.datasets[0].data = data;
+      inst.data.datasets[0].borderColor = lineColor;
+      inst.update('none');
+      return inst;
+    }
+    // Destroy old instance if canvas changed
+    if (sparklineInstances[canvasId]) {
+      try { sparklineInstances[canvasId].destroy(); } catch (_) {}
+      delete sparklineInstances[canvasId];
+    }
     const instance = new Chart(canvas, {
       type: 'line',
       data: {
@@ -275,7 +279,6 @@ const Charts = (() => {
     sparklineInstances[canvasId] = instance;
     return instance;
   }
-
   return {
     get priceChartInstance() { return priceChartInstance; },
     get portfolioChartInstance() { return portfolioChartInstance; },
