@@ -1,5 +1,7 @@
 # 📈 StockSim — Dollar-Based Stock Market Simulator
 
+🚀 **LIVE DEMO:** [https://your-vercel-link.vercel.app](https://stock-market-simulator-two.vercel.app)
+
 A fully-polished, real-time **dollar-based** stock market simulator that runs entirely in your browser — no server, no sign-up, no install required. Just open `index.html` and start trading with a virtual **$10,000**.
 
 ---
