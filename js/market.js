@@ -89,6 +89,26 @@ const Market = (() => {
     });
     return history;
   }
+function getGlobalMarketTrend() {
+  let totalChange = 0;
 
-  return { STOCKS, simulatePriceUpdate, randomNormal, generateHistoricalPrices, initPriceHistory };
+  STOCKS.forEach(stock => {
+    const change = (stock.price - stock.initialPrice) / stock.initialPrice;
+    totalChange += change;
+  });
+
+  const avgChange = totalChange / STOCKS.length;
+
+  if (avgChange > 0.01) return "bull";
+  if (avgChange < -0.01) return "bear";
+  return "neutral";
+}
+  return { 
+  STOCKS, 
+  simulatePriceUpdate, 
+  randomNormal, 
+  generateHistoricalPrices, 
+  initPriceHistory,
+  getGlobalMarketTrend
+};
 })();
