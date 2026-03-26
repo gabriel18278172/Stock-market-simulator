@@ -81,6 +81,7 @@ if (trend === "bull") {
       priceChartInstance.data.labels = labels;
       priceChartInstance.data.datasets[0].data = data;
       priceChartInstance.data.datasets[0].borderColor = lineColor;
+      priceChartInstance.data.datasets[0].fill = true;
       priceChartInstance.data.datasets[0].backgroundColor = function(context) {
         const chart = context.chart;
         const { ctx, chartArea } = chart;
