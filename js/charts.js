@@ -82,7 +82,6 @@ if (trend === "bull") {
       priceChartInstance.data.datasets[0].data = data;
       priceChartInstance.data.datasets[0].borderColor = lineColor;
       priceChartInstance.data.datasets[0].fill = true;
-      priceChartInstance.update();
       priceChartInstance.data.datasets[0].backgroundColor = function(context) {
   const chart = context.chart;
   const { ctx, chartArea } = chart;
@@ -98,6 +97,7 @@ if (trend === "bull") {
     return _gradientFill(ctx, chartArea, '#888', '#888', true);
   }
 };
+     priceChartInstance.update(); 
       return priceChartInstance;
     }
     priceChartInstance = destroyChart(priceChartInstance);
