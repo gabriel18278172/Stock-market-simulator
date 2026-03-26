@@ -147,8 +147,21 @@ if (trend === "bull") {
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     });
     const data = entries.map(e => e.value);
-    const isUp = data[data.length - 1] >= data[0];
-    const lineColor = isUp ? '#6c63ff' : '#ff4d6d';
+    const trend = Market.getGlobalMarketTrend();
+
+let lineColor;
+let isUp;
+
+if (trend === "bull") {
+  lineColor = "#22c55e";
+  isUp = true;
+} else if (trend === "bear") {
+  lineColor = "#ef4444";
+  isUp = false;
+} else {
+  lineColor = "#888";
+  isUp = true;
+}
     portfolioChartInstance = new Chart(canvas, {
       type: 'line',
       data: {
