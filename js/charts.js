@@ -83,6 +83,21 @@ if (trend === "bull") {
       priceChartInstance.data.datasets[0].borderColor = lineColor;
       priceChartInstance.data.datasets[0].fill = true;
       priceChartInstance.update();
+      priceChartInstance.data.datasets[0].backgroundColor = function(context) {
+  const chart = context.chart;
+  const { ctx, chartArea } = chart;
+  if (!chartArea) return 'transparent';
+
+  const trend = Market.getGlobalMarketTrend();
+
+  if (trend === "bull") {
+    return _gradientFill(ctx, chartArea, '#22c55e', '#22c55e', true);
+  } else if (trend === "bear") {
+    return _gradientFill(ctx, chartArea, '#ef4444', '#ef4444', false);
+  } else {
+    return _gradientFill(ctx, chartArea, '#888', '#888', true);
+  }
+};
       return priceChartInstance;
     }
     priceChartInstance = destroyChart(priceChartInstance);
