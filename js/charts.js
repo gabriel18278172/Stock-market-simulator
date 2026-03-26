@@ -61,8 +61,21 @@ const Charts = (() => {
       return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
     });
     const data = entries.map(e => e.price);
-    const isUp = data.length > 1 ? data[data.length - 1] >= data[0] : true;
-    const lineColor = isUp ? '#00d4a8' : '#ff4d6d';
+    const trend = Market.getGlobalMarketTrend();
+
+let lineColor;
+let isUp;
+
+if (trend === "bull") {
+  lineColor = "#22c55e";
+  isUp = true;
+} else if (trend === "bear") {
+  lineColor = "#ef4444";
+  isUp = false;
+} else {
+  lineColor = "#888";
+  isUp = true;
+}
     // Update existing chart in-place for smooth animation
     if (priceChartInstance && priceChartInstance.canvas === canvas) {
       priceChartInstance.data.labels = labels;
